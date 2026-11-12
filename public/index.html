@@ -157,13 +157,15 @@ body.is-login{background:linear-gradient(160deg,#1B1D4B,#3A33A8)}
 body.is-login .wrap{background:#fff;border-radius:18px;margin:12vh auto 0;padding:32px 28px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)}
 .login .logo{background:linear-gradient(135deg,#8B7CF6,#4F46E5);box-shadow:0 8px 16px -8px rgba(79,70,229,.7)}
 .login input{background:#F1F2F9}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 .stat{background:#fff;border:1px solid var(--line);border-left:4px solid var(--c,#4F46E5);border-radius:14px;padding:16px 18px;display:flex;align-items:center;gap:14px;box-shadow:0 1px 2px rgba(26,29,58,.04),0 10px 24px -16px rgba(26,29,58,.25)}
 .stat .ic{flex:none;width:44px;height:44px;border-radius:12px;background:var(--cs,#ECEBFD);color:var(--c,#4F46E5);display:grid;place-items:center}
 .stat .ic svg{width:22px;height:22px}
 .stat b{display:block;font-size:28px;line-height:1.1;font-weight:700;letter-spacing:-0.02em;color:var(--c,#4F46E5)}
 .stat span{font-size:13px;color:var(--muted)}
 .stat.s-stop{--c:#D3342B;--cs:#FDECEA}
+.stat.s-done{--c:#6A6F8F;--cs:#EEEFF5}
+.pill.old{background:#EEEFF5;border-color:#DDE0EC;color:#6A6F8F}
 .stat.s-go{--c:#0E8A4F;--cs:#E6F6EE}
 .tools{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;align-items:center;box-shadow:0 1px 2px rgba(26,29,58,.04)}
 .chips{border:0;gap:8px}
@@ -187,7 +189,7 @@ body.is-login .wrap{background:#fff;border-radius:18px;margin:12vh auto 0;paddin
 .polink{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);color:var(--accent);text-decoration:none;font-weight:600;border-radius:8px;padding:5px 11px}
 .polink:hover{background:#DEDCFB}
 .foot{text-align:center}
-@media (max-width:859px){.stats{grid-template-columns:1fr}.topbar p{display:none}}
+@media (max-width:859px){.stats{grid-template-columns:1fr 1fr}.topbar p{display:none}}
 </style>
 
 <header class="topbar"><div class="in">
@@ -264,10 +266,10 @@ body.is-login .wrap{background:#fff;border-radius:18px;margin:12vh auto 0;paddin
   var noteTimer = null, loadTimer = null;
   var pendingId = null;
 
-  var FILTERS = [['all', 'All'], ['missing', 'Not received'], ['received', 'Received']];
+  var FILTERS = [['all', 'All'], ['missing', 'Not received'], ['received', 'Received'], ['done', 'Done (old)']];
 
   /* ---------- helpers ---------- */
-  function stageOf(t) { return t.receipt ? 'received' : 'missing'; }
+  function stageOf(t) { return t.receipt ? 'received' : (/^\s*done\s*$/i.test(t.status) ? 'done' : 'missing'); }
   function rm(n) {
     return 'RM ' + Number(n || 0).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
@@ -291,7 +293,7 @@ body.is-login .wrap{background:#fff;border-radius:18px;margin:12vh auto 0;paddin
       return r['item_' + i] ? r['item_' + i] + (r['qty_' + i] ? ' x ' + r['qty_' + i] : '') : '';
     }).filter(Boolean);
     return {
-      id: r.issue_key, no: r.issue_key, opc: r.po_number || '', poLink: /^https:\/\//i.test(r.po_link || '') ? r.po_link : '', customer: r.customer || '',
+      id: r.issue_key, no: r.issue_key, opc: r.po_number || '', status: r.status || '', poLink: /^https:\/\//i.test(r.po_link || '') ? r.po_link : '', customer: r.customer || '',
       product: items.join(' · '), summary: r.summary || '',
       createdAt: r.updated_at ? Date.parse(r.updated_at) : 0,
       receipt: r.receipt_path ? { path: r.receipt_path, name: r.receipt_name, type: r.receipt_type, at: Date.parse(r.receipt_uploaded_at) } : null
@@ -301,8 +303,8 @@ body.is-login .wrap{background:#fff;border-radius:18px;margin:12vh auto 0;paddin
   async function load() {
     loadError = '';
     try {
-      var cols = 'issue_key,summary,customer,po_number,po_link,item_1,qty_1,item_2,qty_2,item_3,qty_3,updated_at,receipt_path,receipt_name,receipt_type,receipt_uploaded_at';
-      var res = await sb.from(TABLE).select(cols).not('issue_key', 'is', null).ilike('item_1', '%OPC Cement%').or('status.is.null,status.not.ilike.done').order('updated_at', { ascending: false }).limit(1000);
+      var cols = 'issue_key,summary,customer,status,po_number,po_link,item_1,qty_1,item_2,qty_2,item_3,qty_3,updated_at,receipt_path,receipt_name,receipt_type,receipt_uploaded_at';
+      var res = await sb.from(TABLE).select(cols).not('issue_key', 'is', null).ilike('item_1', '%OPC Cement%').order('updated_at', { ascending: false }).limit(1000);
       if (res.error) throw res.error;
       tickets = (res.data || []).map(function (r) { return mapRow(r); });
       mode = 'db';
@@ -365,6 +367,7 @@ body.is-login .wrap{background:#fff;border-radius:18px;margin:12vh auto 0;paddin
 
   /* ---------- render ---------- */
   function pill(st) {
+    if (st === 'done') return el('span', { class: 'pill old', text: 'Done' });
     return el('span', { class: 'pill ' + (st === 'received' ? 'go' : 'stop'), text: st === 'received' ? '✓ Received' : '✕ Not received' });
   }
 
@@ -382,7 +385,9 @@ body.is-login .wrap{background:#fff;border-radius:18px;margin:12vh auto 0;paddin
     var off = busy.has(t.id);
     var r = t.receipt;
     var acts = [];
-    if (st === 'missing') {
+    if (st === 'done') {
+      /* old order: nothing to do */
+    } else if (st === 'missing') {
       acts.push(el('button', { type: 'button', class: 'btn primary', disabled: off, onclick: function () { pickFile(t.id); } }, 'Upload receipt'));
     } else {
       acts.push(el('button', { type: 'button', class: 'btn', title: r.name, onclick: function () { viewReceipt(r); } }, 'View receipt'));
@@ -398,7 +403,7 @@ body.is-login .wrap{background:#fff;border-radius:18px;margin:12vh auto 0;paddin
       el('div', { class: 'c-po' }, el('span', { class: 'lbl', text: 'PO' }), t.poLink ? el('a', { class: 'num polink', href: t.poLink, target: '_blank', rel: 'noopener noreferrer', text: (t.opc || 'View PO') + ' ↗' }) : el('span', { class: 'num', text: t.opc || '-' })),
       el('div', { class: 'c-status' },
         pill(st),
-        el('div', { class: 'sub' + (st === 'missing' ? ' stop' : ''), text: st === 'received' ? 'OK to deliver · ' + fmt(r.at) : 'Do not deliver' })),
+        el('div', { class: 'sub' + (st === 'missing' ? ' stop' : ''), text: st === 'received' ? 'OK to deliver · ' + fmt(r.at) : st === 'done' ? 'Old order' : 'Do not deliver' })),
       el('div', { class: 'c-act' }, acts));
   }
 
@@ -414,16 +419,17 @@ body.is-login .wrap{background:#fff;border-radius:18px;margin:12vh auto 0;paddin
       perm.hidden = true;
     }
 
-    var counts = { all: tickets.length, missing: 0, received: 0 };
+    var counts = { all: tickets.length, missing: 0, received: 0, done: 0 };
     tickets.forEach(function (t) { counts[stageOf(t)]++; });
     var ICON = {
       all: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h10M9 12h10M9 19h10M4 5h.01M4 12h.01M4 19h.01"/></svg>',
       missing: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+      done: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
       received: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg>'
     };
     var stats = $('#stats');
     stats.replaceChildren();
-    [['all', 'Total tickets', ''], ['missing', 'Not received', ' s-stop'], ['received', 'Received', ' s-go']].forEach(function (x) {
+    [['all', 'Total tickets', ''], ['missing', 'Not received', ' s-stop'], ['received', 'Received', ' s-go'], ['done', 'Done (old)', ' s-done']].forEach(function (x) {
       var ic = el('div', { class: 'ic' }); ic.innerHTML = ICON[x[0]];
       stats.append(el('div', { class: 'stat' + x[2] }, ic, el('div', {}, el('b', { text: String(counts[x[0]]) }), el('span', { text: x[1] }))));
     });
