@@ -493,7 +493,7 @@ html{scrollbar-gutter:stable}
         el('span', { class: 'c-no', text: 'Total' }),
         el('span', { class: 'c-cust', text: vis.length + (vis.length === 1 ? ' ticket' : ' tickets') }),
         el('span', { class: 'c-po' }),
-        el('span', { class: 'c-status', text: vc.missing + ' not received · ' + (vc.received + vc.done) + ' ok' }),
+        el('span', { class: 'c-status', text: vc.missing + ' not received · ' + (vc.received + vc.done) + ' received' }),
         el('span', { class: 'c-act' })));
       vis.forEach(function (t) { list.append(row(t)); });
     }
