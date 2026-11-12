@@ -90,7 +90,8 @@ button, input { font: inherit; color: inherit; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn:not(:disabled):hover { filter: brightness(0.97); }
 @media (min-width: 860px) {
-  .row, .head { grid-template-columns: 150px minmax(0, 1.7fr) 150px 170px 190px; grid-template-areas: "no cust po status act"; gap: 16px; padding: 14px 20px; }
+  .row, .head, .sum { grid-template-columns: 150px minmax(0, 1.7fr) 150px 170px 190px; grid-template-areas: "no cust po status act"; gap: 16px; padding: 14px 20px; }
+  .sum { padding-block: 0; align-items: center; }
   .head { display: grid; background: var(--soft); color: var(--muted); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; padding-block: 10px; }
   .lbl { display: none; }
   .c-status { align-items: flex-start; }
@@ -138,10 +139,6 @@ body.is-login .brand,body.is-login #permNote{display:none!important}
 .login input:focus{background:#fff;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);outline:none}
 .login .btn{width:100%;flex:none;padding:13px 14px;font-size:15px;margin-top:6px}
 
-/* stable layout: scrollbar always reserved, list keeps a minimum height so nothing jumps when filtering */
-html{overflow-y:scroll;scrollbar-gutter:stable}
-.list{min-height:420px}
-.stat b{min-width:2ch;font-variant-numeric:tabular-nums}
 /* ===== OPC redesign: indigo + violet (different from RT's teal + amber) ===== */
 :root{--bg:#EEF5F6;--soft:#F1F7F8;--line:#D9E7EA;--ink:#0F2A33;--muted:#5B7480;--accent:#1A8A7D;--accent-ink:#fff;--accent-soft:#E0F2F0;--go:#0E8A4F;--go-soft:#E6F6EE;--go-line:#B5E4CB;--stop:#D3342B;--stop-soft:#FDECEA;--stop-line:#F5C2BD}
 body{padding:0;background:var(--bg)}
@@ -194,6 +191,32 @@ body.is-login .wrap{background:#fff;border-radius:18px;margin:12vh auto 0;paddin
 .polink:hover{background:#CBE8E6}
 .foot{text-align:center}
 @media (max-width:859px){.stats{grid-template-columns:1fr 1fr}.topbar p{display:none}}
+/* stable layout: scrollbar always reserved, list keeps a minimum height so nothing jumps when filtering */
+html{scrollbar-gutter:stable}
+.sum{display:none}
+@media (min-width:860px){
+  html,body{height:100%}
+  body{overflow:hidden;display:flex;flex-direction:column}
+  .wrap{flex:1 1 auto;min-height:0;width:100%;padding-bottom:24px}
+  .app{flex:1 1 auto;min-height:0}
+  .list{flex:1 1 auto;min-height:0;overflow:auto;scrollbar-gutter:stable}
+  .head{position:sticky;top:0;z-index:3;height:46px}
+  .sum{display:grid;position:sticky;top:46px;z-index:2;height:52px;background:#E3F4F1;border-bottom:2px solid #2BA597;font-weight:700;color:#0F2A33}
+  .sum .c-status{flex-direction:row;align-items:center;gap:10px;white-space:nowrap}
+  .row:nth-child(even){background:#F8FBFB}
+  .foot{display:none}
+  .wrap{padding-top:16px;gap:14px}
+  .topbar .in{padding-block:11px}
+  .topbar .mark{width:38px;height:38px}
+  .stat{padding:10px 16px}
+  .stat .ic{width:38px;height:38px}
+  .stat b{font-size:22px}
+  .tools{padding:10px 14px}
+  .chip{padding:6px 14px}
+  .field input{padding:9px 14px}
+  .row{padding-block:11px}
+}
+.stat b{min-width:2ch;font-variant-numeric:tabular-nums}
 </style>
 
 <header class="topbar"><div class="in">
@@ -464,6 +487,14 @@ body.is-login .wrap{background:#fff;border-radius:18px;margin:12vh auto 0;paddin
       list.append(el('li', { class: 'empty', text: 'No tickets match.' }));
     } else {
       list.append(head());
+      var vc = { missing: 0, received: 0, done: 0 };
+      vis.forEach(function (t) { vc[stageOf(t)]++; });
+      list.append(el('li', { class: 'sum' },
+        el('span', { class: 'c-no', text: 'Total' }),
+        el('span', { class: 'c-cust', text: vis.length + (vis.length === 1 ? ' ticket' : ' tickets') }),
+        el('span', { class: 'c-po' }),
+        el('span', { class: 'c-status', text: vc.missing + ' not received · ' + (vc.received + vc.done) + ' ok' }),
+        el('span', { class: 'c-act' })));
       vis.forEach(function (t) { list.append(row(t)); });
     }
 
