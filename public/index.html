@@ -137,16 +137,67 @@ body.is-login .brand,body.is-login #permNote{display:none!important}
 .login input::placeholder{color:#A39E94}
 .login input:focus{background:#fff;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);outline:none}
 .login .btn{width:100%;flex:none;padding:13px 14px;font-size:15px;margin-top:6px}
+
+/* ===== OPC redesign: indigo + violet (different from RT's teal + amber) ===== */
+:root{--bg:#F1F2F9;--soft:#F4F5FB;--line:#E3E5F1;--ink:#1A1D3A;--muted:#6A6F8F;--accent:#4F46E5;--accent-ink:#fff;--accent-soft:#ECEBFD;--go:#0E8A4F;--go-soft:#E6F6EE;--go-line:#B5E4CB;--stop:#D3342B;--stop-soft:#FDECEA;--stop-line:#F5C2BD}
+body{padding:0;background:var(--bg)}
+.wrap{max-width:1180px;padding:26px 24px 64px;gap:20px}
+.topbar{background:#1B1D4B;border-bottom:3px solid #8B7CF6;color:#fff}
+.topbar .in{max-width:1180px;margin:0 auto;padding:16px 24px;display:flex;align-items:center;gap:14px}
+.topbar .mark{flex:none;width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#8B7CF6,#4F46E5);display:grid;place-items:center;box-shadow:0 6px 16px -6px rgba(139,124,246,.8)}
+.topbar .mark svg{width:24px;height:24px}
+.topbar h1{font-size:19px;font-weight:700;letter-spacing:-0.01em;color:#fff}
+.topbar h1 span{font-weight:400;color:#C9C6F5}
+.topbar p{margin:2px 0 0;font-size:12.5px;color:#A9A6DD}
+.topbar .sp{flex:1}
+.topbar .out{border:0;background:#fff;color:#1B1D4B;font-weight:600;border-radius:10px;padding:10px 16px;cursor:pointer}
+.topbar .out:hover{filter:brightness(.95)}
+body.is-login .topbar{display:none}
+body.is-login{background:linear-gradient(160deg,#1B1D4B,#3A33A8)}
+body.is-login .wrap{background:#fff;border-radius:18px;margin:12vh auto 0;padding:32px 28px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)}
+.login .logo{background:linear-gradient(135deg,#8B7CF6,#4F46E5);box-shadow:0 8px 16px -8px rgba(79,70,229,.7)}
+.login input{background:#F1F2F9}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.stat{background:#fff;border:1px solid var(--line);border-left:4px solid var(--c,#4F46E5);border-radius:14px;padding:16px 18px;display:flex;align-items:center;gap:14px;box-shadow:0 1px 2px rgba(26,29,58,.04),0 10px 24px -16px rgba(26,29,58,.25)}
+.stat .ic{flex:none;width:44px;height:44px;border-radius:12px;background:var(--cs,#ECEBFD);color:var(--c,#4F46E5);display:grid;place-items:center}
+.stat .ic svg{width:22px;height:22px}
+.stat b{display:block;font-size:28px;line-height:1.1;font-weight:700;letter-spacing:-0.02em;color:var(--c,#4F46E5)}
+.stat span{font-size:13px;color:var(--muted)}
+.stat.s-stop{--c:#D3342B;--cs:#FDECEA}
+.stat.s-go{--c:#0E8A4F;--cs:#E6F6EE}
+.tools{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;align-items:center;box-shadow:0 1px 2px rgba(26,29,58,.04)}
+.chips{border:0;gap:8px}
+.chip{border:1px solid var(--line);border-radius:999px;background:#fff;padding:8px 16px;margin:0;color:var(--muted)}
+.chip i{background:var(--soft)}
+.chip[aria-pressed="true"]{background:#1B1D4B;border-color:#1B1D4B;color:#fff}
+.chip[aria-pressed="true"] i{background:rgba(255,255,255,.18);color:#fff}
+.field{width:min(320px,100%)}
+.field > span{display:none}
+.field input{background:var(--soft);border:1px solid transparent;border-radius:10px;padding:11px 14px}
+.field input:focus{background:#fff;border-color:var(--accent)}
+.list{border-radius:16px;border:1px solid var(--line);box-shadow:0 1px 2px rgba(26,29,58,.04),0 14px 30px -20px rgba(26,29,58,.28)}
+.head{background:#F7F7FC;font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:11.5px}
+.row{padding-block:16px}
+.row:hover{background:#F8F8FE}
+.no{font-weight:700;font-size:15px;color:#1B1D4B}
+.cust{font-weight:600}
+.pill{font-weight:600}
+.btn{border-radius:10px}
+.btn.primary{background:linear-gradient(135deg,#6A5CF0,#4F46E5);border-color:#4F46E5;color:#fff;box-shadow:0 6px 14px -8px rgba(79,70,229,.9)}
+.polink{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);color:var(--accent);text-decoration:none;font-weight:600;border-radius:8px;padding:5px 11px}
+.polink:hover{background:#DEDCFB}
+.foot{text-align:center}
+@media (max-width:859px){.stats{grid-template-columns:1fr}.topbar p{display:none}}
 </style>
 
-<div class="wrap">
-  <header class="brand">
-    <div>
-      <h1>OPC Cement Ticket</h1>
-      <p>Upload the receipt for each ticket. Deliver only when the 30% deposit is received.</p>
-    </div>
-  </header>
+<header class="topbar"><div class="in">
+  <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l8-4 8 4v10l-8 4-8-4z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg></div>
+  <div><h1>OPC Cement <span>Ticket</span></h1><p>Upload the receipt for each ticket. Deliver only when the 30% deposit is received.</p></div>
+  <div class="sp"></div>
+  <button type="button" class="out" id="outBtn">Log out</button>
+</div></header>
 
+<div class="wrap">
   <p class="note" id="permNote" hidden></p>
   <div id="status" aria-live="polite"></div>
 
@@ -159,6 +210,7 @@ body.is-login .brand,body.is-login #permNote{display:none!important}
   </form>
 
   <div class="app" id="app">
+  <div class="stats" id="stats"></div>
   <div class="tools">
     <div class="chips" id="chips" role="group" aria-label="Filter by status"></div>
     <label class="field"><span>Search</span><input id="q" type="search" placeholder="Ticket, OPC or customer"></label>
@@ -343,7 +395,7 @@ body.is-login .brand,body.is-login #permNote{display:none!important}
       el('div', { class: 'c-cust' },
         el('div', { class: 'cust', text: t.customer || '' }),
         el('div', { class: 'prod', text: t.product || '' })),
-      el('div', { class: 'c-po' }, el('span', { class: 'lbl', text: 'PO' }), t.poLink ? el('a', { class: 'num polink', href: t.poLink, target: '_blank', rel: 'noopener noreferrer', text: t.opc || 'View PO' }) : el('span', { class: 'num', text: t.opc || '-' })),
+      el('div', { class: 'c-po' }, el('span', { class: 'lbl', text: 'PO' }), t.poLink ? el('a', { class: 'num polink', href: t.poLink, target: '_blank', rel: 'noopener noreferrer', text: (t.opc || 'View PO') + ' ↗' }) : el('span', { class: 'num', text: t.opc || '-' })),
       el('div', { class: 'c-status' },
         pill(st),
         el('div', { class: 'sub' + (st === 'missing' ? ' stop' : ''), text: st === 'received' ? 'OK to deliver · ' + fmt(r.at) : 'Do not deliver' })),
@@ -364,6 +416,17 @@ body.is-login .brand,body.is-login #permNote{display:none!important}
 
     var counts = { all: tickets.length, missing: 0, received: 0 };
     tickets.forEach(function (t) { counts[stageOf(t)]++; });
+    var ICON = {
+      all: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h10M9 12h10M9 19h10M4 5h.01M4 12h.01M4 19h.01"/></svg>',
+      missing: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+      received: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg>'
+    };
+    var stats = $('#stats');
+    stats.replaceChildren();
+    [['all', 'Total tickets', ''], ['missing', 'Not received', ' s-stop'], ['received', 'Received', ' s-go']].forEach(function (x) {
+      var ic = el('div', { class: 'ic' }); ic.innerHTML = ICON[x[0]];
+      stats.append(el('div', { class: 'stat' + x[2] }, ic, el('div', {}, el('b', { text: String(counts[x[0]]) }), el('span', { text: x[1] }))));
+    });
     var chips = FILTERS.map(function (f) {
       return el('button', { type: 'button', class: 'chip', 'aria-pressed': String(filter === f[0]), onclick: function () { filter = f[0]; render(); } },
         f[1], el('i', { text: String(counts[f[0]]) }));
@@ -399,12 +462,12 @@ body.is-login .brand,body.is-login #permNote{display:none!important}
     if (mode === 'demo') {
       foot.append('Sample data. Changes in this preview are not saved.');
     } else if (mode === 'db') {
-      foot.append(tickets.length + (tickets.length === 1 ? ' ticket.' : ' tickets.'), ' ',
-        el('button', { type: 'button', class: 'linkbtn', onclick: signOut }, 'Sign out'));
+      foot.append(tickets.length + (tickets.length === 1 ? ' ticket' : ' tickets'));
     }
   }
 
   /* ---------- wiring ---------- */
+  $('#outBtn').addEventListener('click', signOut);
   $('#q').addEventListener('input', function (e) { query = e.target.value; render(); });
   $('#login').addEventListener('submit', async function (e) {
     e.preventDefault();
