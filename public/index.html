@@ -302,7 +302,7 @@ body.is-login .wrap{background:#fff;border-radius:18px;margin:12vh auto 0;paddin
     loadError = '';
     try {
       var cols = 'issue_key,summary,customer,po_number,po_link,item_1,qty_1,item_2,qty_2,item_3,qty_3,updated_at,receipt_path,receipt_name,receipt_type,receipt_uploaded_at';
-      var res = await sb.from(TABLE).select(cols).not('issue_key', 'is', null).ilike('item_1', '%OPC Cement%').or('status.is.null,status.not.ilike.delivered').order('updated_at', { ascending: false }).limit(1000);
+      var res = await sb.from(TABLE).select(cols).not('issue_key', 'is', null).ilike('item_1', '%OPC Cement%').or('status.is.null,status.not.ilike.done').order('updated_at', { ascending: false }).limit(1000);
       if (res.error) throw res.error;
       tickets = (res.data || []).map(function (r) { return mapRow(r); });
       mode = 'db';
