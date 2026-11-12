@@ -1,305 +1,444 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Emulsion Sales Dashboard</title>
-    <!-- 正式上線時已取消註解 Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f5f7; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 1400px; margin: 0 auto; }
-        h1 { color: #172b4d; margin-bottom: 5px; }
-        .subtitle { color: #5e6c84; margin-bottom: 20px; font-size: 14px; }
-        
-        /* Filter Panel */
-        .filter-panel { background: #fff; padding: 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-        .filter-panel button { background: #0052cc; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px; }
-        .filter-panel button:hover { background: #0747a6; }
-        .filter-panel input { padding: 7px; border: 1px solid #dfe1e6; border-radius: 4px; font-size: 13px; }
-        
-        /* Summary Cards */
-        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .summary-card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid #0052cc; }
-        .summary-card.green { border-left-color: #00875a; }
-        .summary-card.orange { border-left-color: #ffab00; }
-        .summary-title { font-size: 12px; color: #5e6c84; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
-        .summary-value { font-size: 24px; font-weight: bold; color: #172b4d; }
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>OPC Cement Ticket</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+/* Layout: one work column. Header, one line of instructions, status tabs, then one table row per ticket.
+   The status pill (Received / Not received) is the loudest part of each row. Single light look on purpose. */
+:root {
+  --bg: #FFFFFF;
+  --soft: #F3F5F8;
+  --surface: #FFFFFF;
+  --line: #E4E8ED;
+  --ink: #0F1B2D;
+  --muted: #64748B;
+  --accent: #2563EB;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #EAF1FF;
+  --go: #0E8A4F;
+  --go-soft: #E8F7EF;
+  --go-line: #B5E4CB;
+  --stop: #D3342B;
+  --stop-soft: #FDECEA;
+  --stop-line: #F5C2BD;
+  color-scheme: light;
+  --font-text: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-head: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-text); font-size: 15px; line-height: 1.5;
+  padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+h1 { font-family: var(--font-head); margin: 0; text-wrap: balance; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-        /* Table Layout Styling */
-        .table-container { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow-x: auto; max-height: 600px; overflow-y: auto; }
-        .main-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; white-space: nowrap; }
-        .main-table th { background-color: #f8f9fa; color: #495057; font-weight: 600; padding: 12px 10px; border-bottom: 2px solid #eaedf0; position: sticky; top: 0; z-index: 10; }
-        .main-table td { padding: 12px 10px; border-bottom: 1px solid #eaedf0; color: #333; }
-        .main-table tr:hover { background-color: #f8f9fa; }
-        
-        .badge-status { background-color: #e3fcef; color: #006644; padding: 3px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; }
-        .table-links a { display: inline-block; margin-right: 6px; color: #0052cc; text-decoration: none; font-weight: 600; font-size: 12px; }
-        .table-links a:hover { text-decoration: underline; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Emulsion Board Overview</h1>
-        <div class="subtitle">Sales Summary & Tracking Dashboard</div>
+.brand { display: flex; gap: 14px; align-items: center; }
+.logo { position: relative; flex: none; width: 44px; height: 44px; border-radius: 13px; background: var(--accent); box-shadow: 0 6px 14px -6px rgba(37,99,235,0.6); }
+.logo::after { content: ""; position: absolute; left: 16px; top: 9px; width: 10px; height: 19px; border: solid #fff; border-width: 0 3.5px 3.5px 0; transform: rotate(45deg); }
+.brand h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
+.brand p { margin: 2px 0 0; color: var(--muted); }
+.note { margin: 0; color: var(--muted); max-width: 72ch; }
+.note b { color: var(--ink); font-weight: 600; }
 
-        <div class="filter-panel">
-            <span><strong>Quick Filter:</strong></span>
-            <button onclick="setQuickFilter('this_year')">This Year</button>
-            <button onclick="setQuickFilter('last_year')">Last Year</button>
-            <button onclick="setQuickFilter('1m')">Last 1 Month</button>
-            <button onclick="setQuickFilter('3m')">Last 3 Months</button>
-            <button onclick="setQuickFilter('6m')">Last 6 Months</button>
-            <button onclick="setQuickFilter('all')">All History</button>
-            
-            <div style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
-                <span>Start Date:</span>
-                <input type="date" id="start-date">
-                <span>Months:</span>
-                <input type="number" id="duration-months" value="1" min="1" max="60" style="width: 60px;">
-                <button onclick="applyCustomFilter()">Apply Filter</button>
-            </div>
-        </div>
+#status:empty { display: none; }
+.toast { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 10px 14px; }
+.toast.err { border-color: var(--stop-line); background: var(--stop-soft); color: var(--stop); }
 
-        <div class="summary-grid">
-            <div class="summary-card">
-                <div class="summary-title">Total Drums Sold</div>
-                <div class="summary-value" id="sum-total-qty">0</div>
-            </div>
-            <div class="summary-card green">
-                <div class="summary-title">Unique Customers</div>
-                <div class="summary-value" id="sum-total-customers">0</div>
-            </div>
-            <div class="summary-card orange">
-                <div class="summary-title">Total Orders</div>
-                <div class="summary-value" id="sum-total-orders">0</div>
-            </div>
-        </div>
+.tools { display: flex; flex-wrap: wrap; gap: 10px 16px; justify-content: space-between; align-items: flex-end; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid transparent; background: var(--soft); border-radius: 999px; padding: 7px 14px; cursor: pointer; display: inline-flex; gap: 6px; align-items: baseline; font-weight: 500; }
+.chip i { font-style: normal; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.chip[aria-pressed="true"] i { color: inherit; opacity: 0.85; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; width: min(260px, 100%); }
+.field > span { font-size: 12px; color: var(--muted); letter-spacing: 0.04em; }
+.field input { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 11px; min-width: 0; width: 100%; }
+.field input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
 
-        <div id="chart-container" style="width: 100%; height: 480px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; box-sizing: border-box;"></div>
-        
-        <!-- 表格容器 -->
-        <div class="table-container">
-            <table class="main-table">
-                <thead>
-                    <tr>
-                        <th>Key & Summary</th>
-                        <th>Status</th>
-                        <th>Assignee</th>
-                        <th>Customer</th>
-                        <th>Destination</th>
-                        <th>Items & Quantities</th>
-                        <th>Documents / Links</th>
-                        <th>Latest Comment</th>
-                        <th>Updated Date</th>
-                    </tr>
-                </thead>
-                <tbody id="table-body">
-                    <tr><td colspan="9" style="text-align: center; color: #6b778c; padding: 30px;">Loading data...</td></tr>
-                </tbody>
-            </table>
-        </div>
+.list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); overflow: hidden; box-shadow: 0 1px 2px rgba(15,27,45,0.04), 0 12px 28px -18px rgba(15,27,45,0.2); }
+.row, .head { display: grid; gap: 8px 16px; padding: 14px 16px; align-items: center; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "no status" "cust cust" "total dep" "act act"; }
+.row + .row, .head + .row { border-top: 1px solid var(--line); }
+.head { display: none; }
+.c-no { grid-area: no; min-width: 0; }
+.c-cust { grid-area: cust; min-width: 0; }
+.c-total { grid-area: total; min-width: 0; }
+.c-dep { grid-area: dep; min-width: 0; }
+.c-status { grid-area: status; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; min-width: 0; }
+.c-act { grid-area: act; display: flex; gap: 8px; }
+.no { font-family: var(--font-head); font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; line-height: 1.25; }
+.opc { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tag-sample { display: inline-block; margin-top: 3px; font-size: 11px; font-weight: 500; letter-spacing: 0.04em; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; }
+.cust { font-weight: 600; overflow-wrap: anywhere; }
+.prod { color: var(--muted); font-size: 13.5px; overflow-wrap: anywhere; }
+.lbl { display: block; font-size: 12px; color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; font-weight: 500; }
+.num.key { color: var(--accent); font-weight: 700; }
+.pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 12px; font-weight: 600; font-size: 13.5px; white-space: nowrap; border: 1px solid transparent; }
+.pill.go { background: var(--go-soft); border-color: var(--go-line); color: var(--go); }
+.pill.stop { background: var(--stop-soft); border-color: var(--stop-line); color: var(--stop); }
+.sub { font-size: 12.5px; color: var(--muted); }
+.sub.stop { color: var(--stop); font-weight: 500; }
+.btn { flex: 1 1 auto; border: 1px solid var(--line); background: var(--surface); border-radius: 9px; padding: 8px 14px; cursor: pointer; font-weight: 500; text-align: center; text-decoration: none; color: var(--ink); white-space: nowrap; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); box-shadow: 0 4px 10px -4px rgba(37,99,235,0.6); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn:not(:disabled):hover { filter: brightness(0.97); }
+@media (min-width: 860px) {
+  .row, .head { grid-template-columns: 150px minmax(0, 1.7fr) 120px 120px 170px 190px; grid-template-areas: "no cust total dep status act"; gap: 16px; padding: 14px 20px; }
+  .head { display: grid; background: var(--soft); color: var(--muted); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; padding-block: 10px; }
+  .lbl { display: none; }
+  .c-status { align-items: flex-start; }
+  .c-act { justify-content: flex-end; }
+  .c-act .btn { flex: 0 0 auto; }
+  .row:hover { background: #FAFBFD; }
+}
+.app { display: flex; flex-direction: column; gap: 16px; }
+.login { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-end; }
+.login .btn { flex: 0 0 auto; }
+.empty { padding: 32px 16px; color: var(--muted); text-align: center; }
+.foot { margin: 0; color: var(--muted); font-size: 13px; }
+.linkbtn { border: 0; background: none; color: var(--accent); cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) { .btn, .chip { transition: background-color 0.12s, border-color 0.12s; } }
+/* Visual pass: clean white admin look. One blue accent, soft status pills, quiet table. */
+:root{--bg:#F8F6F3;--soft:#F3F5F8;--line:#E6E9EE;--ink:#1C2430;--muted:#6B7686;--accent:#1F8F76;--accent-soft:#E3F4EF;--font-text:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--font-head:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{font-size:14px;padding-block:32px 56px}
+.wrap{gap:20px}
+.brand h1{font-size:24px;font-weight:700;letter-spacing:-0.01em}
+.brand p{margin-top:4px;font-size:14px}
+.chips{gap:2px;flex:1 1 auto;border-bottom:1px solid var(--line)}
+.chip{background:none;border:0;border-bottom:2px solid transparent;border-radius:0;padding:10px 12px;margin-bottom:-1px;color:var(--muted);font-weight:500}
+.chip i{background:var(--soft);border-radius:999px;padding:0 7px;font-size:12px}
+.chip[aria-pressed="true"]{background:none;border-color:var(--accent);color:var(--accent)}
+.chip[aria-pressed="true"] i{background:var(--accent-soft);color:var(--accent);opacity:1}
+.field input{border:1px solid #D8DDE5;border-radius:8px;font-size:14px}
+.list{border-radius:12px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.head{font-weight:500;text-transform:none;letter-spacing:0;font-size:13px}
+.no{font-family:var(--font-text);font-size:14.5px;font-weight:600}
+.cust{font-weight:500}
+.prod{font-size:13px}
+.num.key{color:var(--ink);font-weight:600}
+.pill{font-size:12.5px;padding:3px 10px}
+.sub{font-size:12px}
+.btn{border-radius:8px;font-size:13.5px;padding:7px 14px}
+.btn.primary{box-shadow:none}
+.toast{border-radius:8px}
+body.is-login .wrap{max-width:340px;padding-top:12vh;gap:20px}
+body.is-login .brand,body.is-login #permNote{display:none!important}
+.login{display:flex;flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:14px;text-align:center}
+.login .logo{margin:0 auto 4px;box-shadow:0 8px 16px -8px rgba(31,143,118,.6)}
+.login h2{margin:0 0 8px;font:700 18px/1.2 var(--font-head);letter-spacing:-0.01em}
+.login input{width:100%;background:#EFECE7;border:1px solid transparent;border-radius:8px;padding:13px 14px;font-size:15px}
+.login input::placeholder{color:#A39E94}
+.login input:focus{background:#fff;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);outline:none}
+.login .btn{width:100%;flex:none;padding:13px 14px;font-size:15px;margin-top:6px}
+</style>
+
+<div class="wrap">
+  <header class="brand">
+    <div>
+      <h1>OPC Cement Ticket</h1>
+      <p>Upload the receipt for each ticket. Deliver only when the 30% deposit is received.</p>
     </div>
+  </header>
 
-    <script>
-        let allData = [];
-        let myChart = null;
+  <p class="note" id="permNote" hidden></p>
+  <div id="status" aria-live="polite"></div>
 
-        function extractJsonValue(rawStr) {
-            if (!rawStr) return '-';
-            try {
-                if (rawStr.trim().startsWith('{')) {
-                    const parsed = JSON.parse(rawStr);
-                    return parsed.value || '-';
-                }
-                return rawStr;
-            } catch (e) {
-                return rawStr;
-            }
-        }
+  <form class="login" id="login" hidden>
+    <span class="logo" aria-hidden="true"></span>
+    <h2>OPC Cement Ticket</h2>
+    <input id="em" type="email" aria-label="Email" placeholder="Email" autocomplete="username" required>
+    <input id="pw" type="password" aria-label="Password" placeholder="Password" autocomplete="current-password" required>
+    <button class="btn primary" type="submit">Sign in</button>
+  </form>
 
-        function cleanComment(comment) {
-            if (!comment) return '-';
-            let cleaned = comment.replace(/\[~accountid:[^\]]+\]\s*/g, '');
-            cleaned = cleaned.replace(/<\/?i>/g, '');
-            return cleaned.trim() || '-';
-        }
+  <div class="app" id="app">
+  <div class="tools">
+    <div class="chips" id="chips" role="group" aria-label="Filter by status"></div>
+    <label class="field"><span>Search</span><input id="q" type="search" placeholder="Ticket, OPC or customer"></label>
+  </div>
 
-        async function initDashboard() {
-			// 1. 初始化 Supabase 客户端
-			// URL 使用你之前提供的地址
-			const supabaseUrl = 'https://yvtujoueyotncbvdlgyf.supabase.co';
-			// 注意：在这里必须填写你的 Supabase ANON KEY (Public Key)，绝对不要填入 Service Role Key，以免泄露最高权限
-			const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dHVqb3VleW90bmNidmRsZ3lmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNDAxOTQsImV4cCI6MjEwMzgxNjE5NH0.mmo23blJAMclVJ2MgMoGDNQiDuKw1_O3bWC3Mp2hdVU'; 
-			const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+  <ul class="list" id="list"></ul>
+  <p class="foot" id="foot"></p>
+  </div>
+</div>
+<input type="file" id="file" hidden accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png">
 
-			// 2. 从 emulsion_tickets 表中拉取所有数据
-			const { data, error } = await supabase.from('emulsion_tickets').select('*');
+<script>
+(function () {
+  'use strict';
 
-			if (error) {
-				console.error('获取数据报错:', error);
-				allData = [];
-			} else {
-				// 3. 将真实数据赋值给全局变量
-				allData = data || [];
-			}
+  var SUPABASE_URL = 'https://yvtujoueyotncbvdlgyf.supabase.co';
+  var SUPABASE_KEY = 'sb_publishable_98O37WT0nSZVw2I9128JOg___CX38Dn';
+  var TABLE = 'opc_rhazyme_tickets';
+  var BUCKET = 'delivery-receipts';
+  var AMOUNT_COL = 'budget';   // column used as the order total for the 30% deposit
+  var sb = null;
 
-			// 4. 默认触发过滤并渲染画面
-			setQuickFilter('this_year'); 
-		}
+  function $(s) { return document.querySelector(s); }
 
-        function setQuickFilter(type) {
-            const now = new Date();
-            let startDate = null;
-            let endDate = new Date();
+  function el(tag, props) {
+    var n = document.createElement(tag);
+    var p = props || {};
+    Object.keys(p).forEach(function (k) {
+      var v = p[k];
+      if (v == null || v === false) return;
+      if (k === 'class') n.className = v;
+      else if (k === 'text') n.textContent = v;
+      else if (k.indexOf('on') === 0) n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v === true ? '' : v);
+    });
+    var kids = Array.prototype.slice.call(arguments, 2);
+    kids.forEach(function add(c) {
+      if (c == null || c === false) return;
+      if (Array.isArray(c)) { c.forEach(add); return; }
+      n.append(c.nodeType ? c : document.createTextNode(String(c)));
+    });
+    return n;
+  }
 
-            if (type === 'this_year') {
-                startDate = new Date(now.getFullYear(), 0, 1);
-            } else if (type === 'last_year') {
-                startDate = new Date(now.getFullYear() - 1, 0, 1);
-                endDate = new Date(now.getFullYear() - 1, 11, 31);
-            } else if (type === '1m') {
-                startDate = new Date();
-                startDate.setMonth(now.getMonth() - 1);
-            } else if (type === '3m') {
-                startDate = new Date();
-                startDate.setMonth(now.getMonth() - 3);
-            } else if (type === '6m') {
-                startDate = new Date();
-                startDate.setMonth(now.getMonth() - 6);
-            } else if (type === 'all') {
-                startDate = new Date(2000, 0, 1);
-            }
+  /* ---------- state ---------- */
+  var tickets = [];
+  var mode = 'loading';          // loading | login | db
+  var filter = 'all', query = '';
+  var busy = new Set();
+  var loadError = '';
+  var noteTimer = null, loadTimer = null;
+  var pendingId = null;
 
-            filterAndRender(startDate, endDate);
-        }
+  var FILTERS = [['all', 'All'], ['missing', 'Not received'], ['received', 'Received']];
 
-        function applyCustomFilter() {
-            const startVal = document.getElementById('start-date').value;
-            const months = parseInt(document.getElementById('duration-months').value) || 1;
+  /* ---------- helpers ---------- */
+  function stageOf(t) { return t.receipt ? 'received' : 'missing'; }
+  function rm(n) {
+    return 'RM ' + Number(n || 0).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function deposit(n) { return Math.round(Number(n || 0) * 30) / 100; }
+  function fmt(ms) {
+    if (!ms) return '';
+    return new Date(ms).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+  function notify(msg, isErr) {
+    var box = $('#status');
+    box.replaceChildren();
+    clearTimeout(noteTimer);
+    if (!msg) return;
+    box.append(el('div', { class: 'toast' + (isErr ? ' err' : ''), role: isErr ? 'alert' : 'status', text: msg }));
+    noteTimer = setTimeout(function () { box.replaceChildren(); }, 6000);
+  }
 
-            if (!startVal) {
-                alert('Please select a start date first!');
-                return;
-            }
+  /* ---------- data ---------- */
+  function mapRow(r, rc) {
+    var items = [1, 2, 3].map(function (i) {
+      return r['item_' + i] ? r['item_' + i] + (r['qty_' + i] ? ' x ' + r['qty_' + i] : '') : '';
+    }).filter(Boolean);
+    return {
+      id: r.issue_key, no: r.issue_key, opc: r.po_number || '', customer: r.customer || '',
+      product: items.join(' · '), summary: r.summary || '', amount: r[AMOUNT_COL],
+      createdAt: r.updated_at ? Date.parse(r.updated_at) : 0,
+      receipt: rc ? { path: rc.file_path, name: rc.file_name, type: rc.file_type, at: Date.parse(rc.uploaded_at) } : null
+    };
+  }
 
-            let startDate = new Date(startVal);
-            let endDate = new Date(startDate);
-            endDate.setMonth(endDate.getMonth() + months);
+  async function load() {
+    loadError = '';
+    try {
+      var cols = 'issue_key,summary,customer,po_number,item_1,qty_1,item_2,qty_2,item_3,qty_3,updated_at,' + AMOUNT_COL;
+      var res = await Promise.all([
+        sb.from(TABLE).select(cols).not('issue_key', 'is', null).ilike('item_1', '%OPC Cement%').order('updated_at', { ascending: false }).limit(1000),
+        sb.from('delivery_receipts').select('*').limit(1000)
+      ]);
+      if (res[0].error) throw res[0].error;
+      if (res[1].error) throw res[1].error;
+      var rc = {};
+      (res[1].data || []).forEach(function (x) { rc[x.issue_key] = x; });
+      tickets = (res[0].data || []).map(function (r) { return mapRow(r, rc[r.issue_key]); });
+      mode = 'db';
+    } catch (e) {
+      mode = 'db';
+      loadError = 'Could not load tickets: ' + ((e && (e.message || e.code)) || 'please try again.');
+      notify(loadError, true);
+    }
+    render();
+  }
 
-            filterAndRender(startDate, endDate);
-        }
+  function pickFile(id) {
+    pendingId = id;
+    var f = $('#file');
+    f.value = '';
+    f.click();
+  }
 
-        function filterAndRender(startDate, endDate) {
-            const filtered = allData.filter(t => {
-                if (!t.updated_at) return false;
-                const tDate = new Date(t.updated_at);
-                return tDate >= startDate && tDate <= endDate;
-            });
+  async function handleFile(file) {
+    var id = pendingId; pendingId = null;
+    var t = tickets.find(function (x) { return x.id === id; });
+    if (!t || !file) return;
+    var ext = (file.name.split('.').pop() || '').toLowerCase();
+    var type = file.type || ({ pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png' })[ext] || '';
+    if (['application/pdf', 'image/jpeg', 'image/png'].indexOf(type) < 0) { notify('Please upload a PDF, JPG or PNG file.', true); return; }
+    if (file.size > 10 * 1024 * 1024) { notify('This file is over 10 MB. Please make it smaller and try again.', true); return; }
+    busy.add(id); render();
+    try {
+      var path = id + '/' + Date.now() + '-' + file.name.replace(/[^\w.\-]+/g, '_');
+      var up = await sb.storage.from(BUCKET).upload(path, file, { contentType: type });
+      if (up.error) throw up.error;
+      var at = new Date().toISOString();
+      var ins = await sb.from('delivery_receipts').upsert(
+        { issue_key: id, file_path: path, file_name: file.name, file_type: type, uploaded_at: at }, { onConflict: 'issue_key' });
+      if (ins.error) throw ins.error;
+      t.receipt = { path: path, name: file.name, type: type, at: Date.parse(at) };
+    } catch (e) {
+      notify('Upload failed: ' + ((e && (e.message || e.code)) || 'please try again.'), true);
+    } finally {
+      busy.delete(id); render();
+    }
+  }
 
-            let totalQty = 0;
-            const customerSet = new Set();
-            
-            const itemTotals = {
-                "K1-40 (Drums)": 0, "RS-1K (Drums)": 0, "RS-1K 50% (Drums)": 0, "SS-1K (Drums)": 0, "RS-3K (Drums)": 0, "Neomad (Drums)": 0,
-                "K1-40 (Bulk)": 0, "RS-1K (Bulk)": 0, "RS-1K 50% (Bulk)": 0, "SS-1K (Bulk)": 0, "RS-3K (Bulk)": 0, "Neomad (Bulk)": 0,
-                "Others (Specified in description)": 0
-            };
+  async function viewReceipt(r) {
+    var w = window.open('', '_blank');
+    var res = await sb.storage.from(BUCKET).createSignedUrl(r.path, 300);
+    if (res.error || !res.data) {
+      if (w) w.close();
+      notify('Cannot open receipt: ' + ((res.error && res.error.message) || 'please try again.'), true);
+      return;
+    }
+    if (w) w.location.href = res.data.signedUrl; else location.href = res.data.signedUrl;
+  }
 
-            filtered.forEach(t => {
-                totalQty += (parseInt(t.qty_1) || 0) + (parseInt(t.qty_2) || 0) + (parseInt(t.qty_3) || 0);
-                
-                const cleanCustomer = extractJsonValue(t.customer);
-                if (cleanCustomer !== '-') {
-                    customerSet.add(cleanCustomer);
-                }
-                
-                if (t.item_1 && t.qty_1) { itemTotals[t.item_1] = (itemTotals[t.item_1] || 0) + parseInt(t.qty_1); }
-                if (t.item_2 && t.qty_2) { itemTotals[t.item_2] = (itemTotals[t.item_2] || 0) + parseInt(t.qty_2); }
-                if (t.item_3 && t.qty_3) { itemTotals[t.item_3] = (itemTotals[t.item_3] || 0) + parseInt(t.qty_3); }
-            });
+  async function signOut() {
+    await sb.auth.signOut();
+    tickets = []; mode = 'login'; render();
+  }
 
-            document.getElementById('sum-total-qty').innerText = totalQty.toLocaleString();
-            document.getElementById('sum-total-customers').innerText = customerSet.size.toLocaleString();
-            document.getElementById('sum-total-orders').innerText = filtered.length.toLocaleString();
+  /* ---------- render ---------- */
+  function pill(st) {
+    return el('span', { class: 'pill ' + (st === 'received' ? 'go' : 'stop'), text: st === 'received' ? '✓ Received' : '✕ Not received' });
+  }
 
-            const tbody = document.getElementById('table-body');
-            
-            if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #6b778c; padding: 30px;">No records found within this date range.</td></tr>';
-                if(myChart) myChart.clear();
-                return;
-            }
+  function head() {
+    return el('li', { class: 'head', 'aria-hidden': 'true' },
+      el('span', { class: 'c-no', text: 'Ticket' }),
+      el('span', { class: 'c-cust', text: 'Customer' }),
+      el('span', { class: 'c-total', text: 'Order total' }),
+      el('span', { class: 'c-dep', text: '30% deposit' }),
+      el('span', { class: 'c-status', text: 'Status' }),
+      el('span', { class: 'c-act' }));
+  }
 
-            const chartLabels = Object.keys(itemTotals);
-            const chartData = Object.values(itemTotals);
+  function row(t) {
+    var st = stageOf(t);
+    var off = busy.has(t.id);
+    var r = t.receipt;
+    var acts = [];
+    if (st === 'missing') {
+      acts.push(el('button', { type: 'button', class: 'btn primary', disabled: off, onclick: function () { pickFile(t.id); } }, 'Upload receipt'));
+    } else {
+      acts.push(el('button', { type: 'button', class: 'btn', title: r.name, onclick: function () { viewReceipt(r); } }, 'View receipt'));
+      acts.push(el('button', { type: 'button', class: 'btn', disabled: off, onclick: function () { pickFile(t.id); } }, 'Replace'));
+    }
+    return el('li', { class: 'row ' + (st === 'received' ? 'go' : 'stop') },
+      el('div', { class: 'c-no' },
+        el('div', { class: 'no', text: t.no || t.id }),
+        t.opc ? el('div', { class: 'opc', text: t.opc }) : null,
+        t.sample ? el('span', { class: 'tag-sample', text: 'Sample' }) : null),
+      el('div', { class: 'c-cust' },
+        el('div', { class: 'cust', text: t.customer || '' }),
+        el('div', { class: 'prod', text: t.product || '' })),
+      el('div', { class: 'c-total' }, el('span', { class: 'lbl', text: 'Order total' }), el('span', { class: 'num', text: rm(t.amount) })),
+      el('div', { class: 'c-dep' }, el('span', { class: 'lbl', text: '30% deposit' }), el('span', { class: 'num key', text: rm(deposit(t.amount)) })),
+      el('div', { class: 'c-status' },
+        pill(st),
+        el('div', { class: 'sub' + (st === 'missing' ? ' stop' : ''), text: st === 'received' ? 'OK to deliver · ' + fmt(r.at) : 'Do not deliver' })),
+      el('div', { class: 'c-act' }, acts));
+  }
 
-            if (!myChart) {
-                myChart = echarts.init(document.getElementById('chart-container'));
-            }
+  function render() {
+    document.body.classList.toggle('is-login', mode === 'login');
+    $('#login').hidden = mode !== 'login';
+    $('#app').hidden = mode === 'login';
+    var perm = $('#permNote');
+    if (mode === 'login') {
+      perm.textContent = 'Sign in to see tickets and upload receipts.';
+      perm.hidden = false;
+    } else {
+      perm.hidden = true;
+    }
 
-            const option = {
-                title: { text: 'Total Quantity Trend by Product', left: 'center', textStyle: { color: '#172b4d', fontSize: 16 } },
-                tooltip: { trigger: 'axis' },
-                xAxis: { 
-                    type: 'category', 
-                    data: chartLabels, 
-                    axisLabel: { interval: 0, rotate: 45, fontSize: 11 } 
-                },
-                yAxis: { 
-                    type: 'value', 
-                    name: 'Qty',
-                },
-                series: [{
-                    data: chartData,
-                    type: 'line',
-                    smooth: true,
-                    symbol: 'circle',
-                    symbolSize: 10,
-                    itemStyle: { color: '#0052cc' },
-                    lineStyle: { width: 4 },
-                    areaStyle: { opacity: 0.15 },
-                    label: { show: true, position: 'top', fontWeight: 'bold' }
-                }],
-                grid: { left: '5%', right: '5%', bottom: '25%', top: '15%', containLabel: true }
-            };
-            myChart.setOption(option);
-            window.addEventListener('resize', function() { myChart.resize(); });
+    var counts = { all: tickets.length, missing: 0, received: 0 };
+    tickets.forEach(function (t) { counts[stageOf(t)]++; });
+    var chips = FILTERS.map(function (f) {
+      return el('button', { type: 'button', class: 'chip', 'aria-pressed': String(filter === f[0]), onclick: function () { filter = f[0]; render(); } },
+        f[1], el('i', { text: String(counts[f[0]]) }));
+    });
+    $('#chips').replaceChildren.apply($('#chips'), chips);
 
-            // 渲染表格的每一行
-            tbody.innerHTML = filtered.map(t => {
-                const cleanCus = extractJsonValue(t.customer);
-                const cleanDest = extractJsonValue(t.destination);
-                const cleanMsg = cleanComment(t.latest_comment);
-                
-                // 組合產品與數量字串
-                let itemsStr = [];
-                if (t.item_1) itemsStr.push(`${t.item_1}: ${t.qty_1 || 0}`);
-                if (t.item_2) itemsStr.push(`${t.item_2}: ${t.qty_2 || 0}`);
-                if (t.item_3) itemsStr.push(`${t.item_3}: ${t.qty_3 || 0}`);
+    var q = query.trim().toLowerCase();
+    var vis = tickets.filter(function (t) {
+      if (filter !== 'all' && stageOf(t) !== filter) return false;
+      if (!q) return true;
+      return [t.no, t.id, t.opc, t.customer, t.product, t.summary].some(function (x) { return String(x || '').toLowerCase().indexOf(q) >= 0; });
+    });
+    vis.sort(function (a, b) {
+      var d = (stageOf(a) === 'missing' ? 0 : 1) - (stageOf(b) === 'missing' ? 0 : 1);
+      return d !== 0 ? d : (b.createdAt || 0) - (a.createdAt || 0);
+    });
 
-                return `
-                <tr>
-                    <td><strong>${t.issue_key || 'No Key'}</strong><br><span style="color: #5e6c84; font-size: 12px;">${t.summary || '-'}</span></td>
-                    <td><span class="badge-status">${t.status || '-'}</span></td>
-                    <td>${t.assignee || 'Unassigned'}</td>
-                    <td>${cleanCus}</td>
-                    <td>${cleanDest}</td>
-                    <td>${itemsStr.join('<br>') || '-'}</td>
-                    <td class="table-links">
-                        ${t.po_link ? `<a href="${t.po_link}" target="_blank">PO</a>` : ''}
-                        ${t.do_link ? `<a href="${t.do_link}" target="_blank">DO</a>` : ''}
-                        ${t.invoice_link ? `<a href="${t.invoice_link}" target="_blank">INV</a>` : ''}
-                        ${t.bc_bl_link ? `<a href="${t.bc_bl_link}" target="_blank">BL</a>` : ''}
-                    </td>
-                    <td style="max-width: 250px; white-space: normal; color: #5e6c84;">${cleanMsg}</td>
-                    <td style="color: #6b778c; font-size: 12px;">${new Date(t.updated_at).toLocaleString()}</td>
-                </tr>
-                `;
-            }).join('');
-        }
+    var list = $('#list');
+    list.replaceChildren();
+    if (mode === 'loading') {
+      list.append(el('li', { class: 'empty', text: 'Loading…' }));
+    } else if (!tickets.length) {
+      list.append(el('li', { class: 'empty', text: loadError || 'No tickets yet.' }));
+    } else if (!vis.length) {
+      list.append(el('li', { class: 'empty', text: 'No tickets match.' }));
+    } else {
+      list.append(head());
+      vis.forEach(function (t) { list.append(row(t)); });
+    }
 
-        document.addEventListener('DOMContentLoaded', initDashboard);
-    </script>
-</body>
-</html>
+    var foot = $('#foot');
+    foot.replaceChildren();
+    if (mode === 'demo') {
+      foot.append('Sample data. Changes in this preview are not saved.');
+    } else if (mode === 'db') {
+      foot.append(tickets.length + (tickets.length === 1 ? ' ticket.' : ' tickets.'), ' ',
+        el('button', { type: 'button', class: 'linkbtn', onclick: signOut }, 'Sign out'));
+    }
+  }
+
+  /* ---------- wiring ---------- */
+  $('#q').addEventListener('input', function (e) { query = e.target.value; render(); });
+  $('#login').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var b = e.currentTarget.querySelector('button[type=submit]');
+    b.disabled = true; b.textContent = 'Signing in…';
+    var r = await sb.auth.signInWithPassword({ email: $('#em').value.trim(), password: $('#pw').value });
+    b.disabled = false; b.textContent = 'Sign in';
+    if (r.error) {
+      notify(/invalid login/i.test(r.error.message) ? 'Wrong email or password. Please try again.' : 'Sign in failed: ' + r.error.message, true);
+      return;
+    }
+    $('#pw').value = '';
+    load();
+  });
+  $('#file').addEventListener('change', function (e) { handleFile(e.target.files && e.target.files[0]); });
+
+  /* ---------- start ---------- */
+  async function init() {
+    render();
+    if (!window.supabase) { notify('Cannot load the Supabase library. Check your connection.', true); return; }
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    var s = await sb.auth.getSession();
+    if (s.data && s.data.session) { await load(); } else { mode = 'login'; render(); }
+  }
+  init();
+})();
+</script>
+
+</body></html>
