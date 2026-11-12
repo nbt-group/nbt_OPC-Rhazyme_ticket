@@ -138,6 +138,10 @@ body.is-login .brand,body.is-login #permNote{display:none!important}
 .login input:focus{background:#fff;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);outline:none}
 .login .btn{width:100%;flex:none;padding:13px 14px;font-size:15px;margin-top:6px}
 
+/* stable layout: scrollbar always reserved, list keeps a minimum height so nothing jumps when filtering */
+html{overflow-y:scroll;scrollbar-gutter:stable}
+.list{min-height:420px}
+.stat b{min-width:2ch;font-variant-numeric:tabular-nums}
 /* ===== OPC redesign: indigo + violet (different from RT's teal + amber) ===== */
 :root{--bg:#EEF5F6;--soft:#F1F7F8;--line:#D9E7EA;--ink:#0F2A33;--muted:#5B7480;--accent:#1A8A7D;--accent-ink:#fff;--accent-soft:#E0F2F0;--go:#0E8A4F;--go-soft:#E6F6EE;--go-line:#B5E4CB;--stop:#D3342B;--stop-soft:#FDECEA;--stop-line:#F5C2BD}
 body{padding:0;background:var(--bg)}
