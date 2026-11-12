@@ -63,13 +63,12 @@ button, input { font: inherit; color: inherit; }
 .field input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
 
 .list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); overflow: hidden; box-shadow: 0 1px 2px rgba(15,27,45,0.04), 0 12px 28px -18px rgba(15,27,45,0.2); }
-.row, .head { display: grid; gap: 8px 16px; padding: 14px 16px; align-items: center; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "no status" "cust cust" "total dep" "act act"; }
+.row, .head { display: grid; gap: 8px 16px; padding: 14px 16px; align-items: center; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "no status" "cust cust" "po po" "act act"; }
 .row + .row, .head + .row { border-top: 1px solid var(--line); }
 .head { display: none; }
 .c-no { grid-area: no; min-width: 0; }
 .c-cust { grid-area: cust; min-width: 0; }
-.c-total { grid-area: total; min-width: 0; }
-.c-dep { grid-area: dep; min-width: 0; }
+.c-po { grid-area: po; min-width: 0; }
 .c-status { grid-area: status; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; min-width: 0; }
 .c-act { grid-area: act; display: flex; gap: 8px; }
 .no { font-family: var(--font-head); font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; line-height: 1.25; }
@@ -90,7 +89,7 @@ button, input { font: inherit; color: inherit; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn:not(:disabled):hover { filter: brightness(0.97); }
 @media (min-width: 860px) {
-  .row, .head { grid-template-columns: 150px minmax(0, 1.7fr) 120px 120px 170px 190px; grid-template-areas: "no cust total dep status act"; gap: 16px; padding: 14px 20px; }
+  .row, .head { grid-template-columns: 150px minmax(0, 1.7fr) 150px 170px 190px; grid-template-areas: "no cust po status act"; gap: 16px; padding: 14px 20px; }
   .head { display: grid; background: var(--soft); color: var(--muted); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; padding-block: 10px; }
   .lbl { display: none; }
   .c-status { align-items: flex-start; }
@@ -240,7 +239,7 @@ body.is-login .brand,body.is-login #permNote{display:none!important}
     }).filter(Boolean);
     return {
       id: r.issue_key, no: r.issue_key, opc: r.po_number || '', customer: r.customer || '',
-      product: items.join(' · '), summary: r.summary || '', amount: r[AMOUNT_COL],
+      product: items.join(' · '), summary: r.summary || '',
       createdAt: r.updated_at ? Date.parse(r.updated_at) : 0,
       receipt: r.receipt_path ? { path: r.receipt_path, name: r.receipt_name, type: r.receipt_type, at: Date.parse(r.receipt_uploaded_at) } : null
     };
@@ -249,7 +248,7 @@ body.is-login .brand,body.is-login #permNote{display:none!important}
   async function load() {
     loadError = '';
     try {
-      var cols = 'issue_key,summary,customer,po_number,item_1,qty_1,item_2,qty_2,item_3,qty_3,updated_at,receipt_path,receipt_name,receipt_type,receipt_uploaded_at,' + AMOUNT_COL;
+      var cols = 'issue_key,summary,customer,po_number,item_1,qty_1,item_2,qty_2,item_3,qty_3,updated_at,receipt_path,receipt_name,receipt_type,receipt_uploaded_at';
       var res = await sb.from(TABLE).select(cols).not('issue_key', 'is', null).ilike('item_1', '%OPC Cement%').order('updated_at', { ascending: false }).limit(1000);
       if (res.error) throw res.error;
       tickets = (res.data || []).map(function (r) { return mapRow(r); });
@@ -320,8 +319,7 @@ body.is-login .brand,body.is-login #permNote{display:none!important}
     return el('li', { class: 'head', 'aria-hidden': 'true' },
       el('span', { class: 'c-no', text: 'Ticket' }),
       el('span', { class: 'c-cust', text: 'Customer' }),
-      el('span', { class: 'c-total', text: 'Order total' }),
-      el('span', { class: 'c-dep', text: '30% deposit' }),
+      el('span', { class: 'c-po', text: 'PO' }),
       el('span', { class: 'c-status', text: 'Status' }),
       el('span', { class: 'c-act' }));
   }
@@ -340,13 +338,11 @@ body.is-login .brand,body.is-login #permNote{display:none!important}
     return el('li', { class: 'row ' + (st === 'received' ? 'go' : 'stop') },
       el('div', { class: 'c-no' },
         el('div', { class: 'no', text: t.no || t.id }),
-        t.opc ? el('div', { class: 'opc', text: t.opc }) : null,
         t.sample ? el('span', { class: 'tag-sample', text: 'Sample' }) : null),
       el('div', { class: 'c-cust' },
         el('div', { class: 'cust', text: t.customer || '' }),
         el('div', { class: 'prod', text: t.product || '' })),
-      el('div', { class: 'c-total' }, el('span', { class: 'lbl', text: 'Order total' }), el('span', { class: 'num', text: rm(t.amount) })),
-      el('div', { class: 'c-dep' }, el('span', { class: 'lbl', text: '30% deposit' }), el('span', { class: 'num key', text: rm(deposit(t.amount)) })),
+      el('div', { class: 'c-po' }, el('span', { class: 'lbl', text: 'PO' }), el('span', { class: 'num', text: t.opc || '-' })),
       el('div', { class: 'c-status' },
         pill(st),
         el('div', { class: 'sub' + (st === 'missing' ? ' stop' : ''), text: st === 'received' ? 'OK to deliver · ' + fmt(r.at) : 'Do not deliver' })),
