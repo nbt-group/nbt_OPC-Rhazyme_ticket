@@ -63,12 +63,14 @@ button, input { font: inherit; color: inherit; }
 .field input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
 
 .list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); overflow: hidden; box-shadow: 0 1px 2px rgba(15,27,45,0.04), 0 12px 28px -18px rgba(15,27,45,0.2); }
-.row, .head { display: grid; gap: 8px 16px; padding: 14px 16px; align-items: center; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "no status" "cust cust" "po po" "act act"; }
+.row, .head { display: grid; gap: 8px 16px; padding: 14px 16px; align-items: center; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "no status" "cust cust" "dest dest" "po po" "act act"; }
 .row + .row, .head + .row { border-top: 1px solid var(--line); }
 .head { display: none; }
 .c-no { grid-area: no; min-width: 0; }
 .c-cust { grid-area: cust; min-width: 0; }
 .c-po { grid-area: po; min-width: 0; }
+.c-dest { grid-area: dest; min-width: 0; }
+.c-dest:empty { display: none; }
 .c-status { grid-area: status; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; min-width: 0; }
 .c-act { grid-area: act; display: flex; gap: 8px; }
 .no { font-family: var(--font-head); font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; line-height: 1.25; }
@@ -90,11 +92,12 @@ button, input { font: inherit; color: inherit; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn:not(:disabled):hover { filter: brightness(0.97); }
 @media (min-width: 860px) {
-  .row, .head, .sum { grid-template-columns: 150px minmax(0, 1.7fr) 150px 170px 190px; grid-template-areas: "no cust po status act"; gap: 16px; padding: 14px 20px; }
+  .row, .head, .sum { grid-template-columns: 150px minmax(0, 1.3fr) minmax(0, 1fr) 140px 170px 190px; grid-template-areas: "no cust dest po status act"; gap: 16px; padding: 14px 20px; }
   .sum { padding-block: 0; align-items: center; }
   .head { display: grid; background: var(--soft); color: var(--muted); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; padding-block: 10px; }
   .lbl { display: none; }
   .c-status { align-items: flex-start; }
+  .c-dest:empty { display: block; }
   .c-act { justify-content: flex-end; }
   .c-act .btn { flex: 0 0 auto; }
   .row:hover { background: #FAFBFD; }
@@ -218,7 +221,9 @@ html{scrollbar-gutter:stable}
 }
 .stat b{min-width:2ch;font-variant-numeric:tabular-nums}
 .created{font-size:12px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
-.dest{font-size:13px;color:var(--accent);font-weight:500;margin-top:2px;overflow-wrap:anywhere}
+.dest{font-size:14px;color:var(--ink);font-weight:500;overflow-wrap:anywhere}
+.ponum{font-size:12px;color:var(--muted);margin-top:3px;font-variant-numeric:tabular-nums}
+.wrap,.topbar .in{max-width:1280px}
 </style>
 
 <header class="topbar"><div class="in">
@@ -421,6 +426,7 @@ html{scrollbar-gutter:stable}
     return el('li', { class: 'head', 'aria-hidden': 'true' },
       el('span', { class: 'c-no', text: 'Ticket' }),
       el('span', { class: 'c-cust', text: 'Customer' }),
+      el('span', { class: 'c-dest', text: 'Destination' }),
       el('span', { class: 'c-po', text: 'PO' }),
       el('span', { class: 'c-status', text: 'Status' }),
       el('span', { class: 'c-act' }));
@@ -446,9 +452,9 @@ html{scrollbar-gutter:stable}
         t.sample ? el('span', { class: 'tag-sample', text: 'Sample' }) : null),
       el('div', { class: 'c-cust' },
         el('div', { class: 'cust', text: t.customer || '' }),
-        el('div', { class: 'prod', text: t.product || '' }),
-        t.dest ? el('div', { class: 'dest', text: '→ ' + t.dest }) : null),
-      el('div', { class: 'c-po' }, el('span', { class: 'lbl', text: 'PO' }), t.poLink ? el('a', { class: 'num polink', href: t.poLink, target: '_blank', rel: 'noopener noreferrer', text: (t.opc || 'View PO') + ' ↗' }) : el('span', { class: 'num', text: t.opc || '-' })),
+        el('div', { class: 'prod', text: t.product || '' })),
+      el('div', { class: 'c-dest' }, t.dest ? [el('span', { class: 'lbl', text: 'Destination' }), el('span', { class: 'dest', text: t.dest })] : []),
+      el('div', { class: 'c-po' }, el('span', { class: 'lbl', text: 'PO' }), t.poLink ? el('a', { class: 'num polink', href: t.poLink, target: '_blank', rel: 'noopener noreferrer', text: 'View PO ↗' }) : el('span', { class: 'num', text: '-' }), t.opc ? el('div', { class: 'ponum', text: t.opc }) : null),
       el('div', { class: 'c-status' },
         pill(st),
         el('div', { class: 'sub' + (st === 'missing' ? ' stop' : ''), text: st === 'received' ? 'OK to deliver · ' + fmt(r.at) : st === 'done' ? 'Old order' : 'Do not deliver' })),
@@ -513,6 +519,7 @@ html{scrollbar-gutter:stable}
       list.append(el('li', { class: 'sum' },
         el('span', { class: 'c-no', text: 'Total' }),
         el('span', { class: 'c-cust', text: vis.length + (vis.length === 1 ? ' ticket' : ' tickets') }),
+        el('span', { class: 'c-dest' }),
         el('span', { class: 'c-po' }),
         el('span', { class: 'c-status', text: vc.missing + ' not received · ' + (vc.received + vc.done) + ' received' }),
         el('span', { class: 'c-act' })));
