@@ -217,6 +217,8 @@ html{scrollbar-gutter:stable}
   .row{padding-block:11px}
 }
 .stat b{min-width:2ch;font-variant-numeric:tabular-nums}
+.created{font-size:12px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+.dest{font-size:13px;color:var(--accent);font-weight:500;margin-top:2px;overflow-wrap:anywhere}
 </style>
 
 <header class="topbar"><div class="in">
@@ -315,6 +317,19 @@ html{scrollbar-gutter:stable}
   }
 
   /* ---------- data ---------- */
+  /* destination may be plain text, or (from an old sync) a raw Jira JSON object */
+  function cleanDest(v) {
+    if (!v) return '';
+    v = String(v).trim();
+    if (v.charAt(0) === '{') {
+      try { var o = JSON.parse(v); return String(o.value || o.name || '').trim(); } catch (e) { return ''; }
+    }
+    return v;
+  }
+  function dmy(ms) {
+    return ms ? new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+  }
+
   function mapRow(r) {
     var items = [1, 2, 3].map(function (i) {
       return r['item_' + i] ? r['item_' + i] + (r['qty_' + i] ? ' x ' + r['qty_' + i] : '') : '';
@@ -322,6 +337,7 @@ html{scrollbar-gutter:stable}
     return {
       id: r.issue_key, no: r.issue_key, opc: r.po_number || '', status: r.status || '', poLink: /^https:\/\//i.test(r.po_link || '') ? r.po_link : '', customer: r.customer || '',
       product: items.join(' · '), summary: r.summary || '',
+      dest: cleanDest(r.destination), created: r.created_at ? Date.parse(r.created_at) : 0,
       createdAt: r.updated_at ? Date.parse(r.updated_at) : 0,
       receipt: r.receipt_path ? { path: r.receipt_path, name: r.receipt_name, type: r.receipt_type, at: Date.parse(r.receipt_uploaded_at) } : null
     };
@@ -330,8 +346,10 @@ html{scrollbar-gutter:stable}
   async function load() {
     loadError = '';
     try {
-      var cols = 'issue_key,summary,customer,status,po_number,po_link,item_1,qty_1,item_2,qty_2,item_3,qty_3,updated_at,receipt_path,receipt_name,receipt_type,receipt_uploaded_at';
-      var res = await sb.from(TABLE).select(cols).not('issue_key', 'is', null).ilike('item_1', '%OPC Cement%').order('updated_at', { ascending: false }).limit(1000);
+      var base = 'issue_key,summary,customer,status,destination,po_number,po_link,item_1,qty_1,item_2,qty_2,item_3,qty_3,updated_at,receipt_path,receipt_name,receipt_type,receipt_uploaded_at';
+      var run = function (c) { return sb.from(TABLE).select(c).not('issue_key', 'is', null).ilike('item_1', '%OPC Cement%').order('updated_at', { ascending: false }).limit(1000); };
+      var res = await run(base + ',created_at');
+      if (res.error && /created_at/i.test(res.error.message || '')) res = await run(base);  /* column not added yet */
       if (res.error) throw res.error;
       tickets = (res.data || []).map(function (r) { return mapRow(r); });
       mode = 'db';
@@ -423,10 +441,12 @@ html{scrollbar-gutter:stable}
     return el('li', { class: 'row ' + (st === 'received' ? 'go' : 'stop') },
       el('div', { class: 'c-no' },
         el('div', { class: 'no', text: t.no || t.id }),
+        t.created ? el('div', { class: 'created', title: 'Created date', text: dmy(t.created) }) : null,
         t.sample ? el('span', { class: 'tag-sample', text: 'Sample' }) : null),
       el('div', { class: 'c-cust' },
         el('div', { class: 'cust', text: t.customer || '' }),
-        el('div', { class: 'prod', text: t.product || '' })),
+        el('div', { class: 'prod', text: t.product || '' }),
+        t.dest ? el('div', { class: 'dest', text: '→ ' + t.dest }) : null),
       el('div', { class: 'c-po' }, el('span', { class: 'lbl', text: 'PO' }), t.poLink ? el('a', { class: 'num polink', href: t.poLink, target: '_blank', rel: 'noopener noreferrer', text: (t.opc || 'View PO') + ' ↗' }) : el('span', { class: 'num', text: t.opc || '-' })),
       el('div', { class: 'c-status' },
         pill(st),
@@ -470,7 +490,7 @@ html{scrollbar-gutter:stable}
     var vis = tickets.filter(function (t) {
       if (filter !== 'all' && stageOf(t) !== filter) return false;
       if (!q) return true;
-      return [t.no, t.id, t.opc, t.customer, t.product, t.summary].some(function (x) { return String(x || '').toLowerCase().indexOf(q) >= 0; });
+      return [t.no, t.id, t.opc, t.customer, t.dest, t.product, t.summary].some(function (x) { return String(x || '').toLowerCase().indexOf(q) >= 0; });
     });
     vis.sort(function (a, b) {
       var d = (stageOf(a) === 'missing' ? 0 : 1) - (stageOf(b) === 'missing' ? 0 : 1);
