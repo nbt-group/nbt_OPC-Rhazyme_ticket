@@ -271,7 +271,7 @@ html{scrollbar-gutter:stable}
   var BUCKET = 'delivery-receipts';
   /* Tickets created BEFORE this date are old orders (no receipt needed).
      Tickets created ON or AFTER it must have the 30% deposit receipt before delivery. Format: YYYY-MM-DD (Malaysia time). */
-  var CUTOFF_DATE = '2026-11-11';
+  var CUTOFF_DATE = '2026-11-01';
   var CUTOFF_MS = Date.parse(CUTOFF_DATE + 'T00:00:00+08:00');
   var AMOUNT_COL = 'budget';   // column used as the order total for the 30% deposit
   var sb = null;
@@ -349,7 +349,7 @@ html{scrollbar-gutter:stable}
     return {
       id: r.issue_key, no: r.issue_key, opc: r.po_number || '', status: r.status || '', poLink: /^https:\/\//i.test(r.po_link || '') ? r.po_link : '', customer: r.customer || '',
       product: items.join(' · '), summary: r.summary || '',
-      dest: cleanDest(r.destination), created: Date.parse(r.created_at || '') || 0,
+      dest: String(r.site_location || '').trim(), created: Date.parse(r.created_at || '') || 0,
       createdAt: Date.parse(r.created_at || '') || 0,
       receipt: r.receipt_path ? { path: r.receipt_path, name: r.receipt_name, type: r.receipt_type, at: Date.parse(r.receipt_uploaded_at) } : null
     };
@@ -358,7 +358,7 @@ html{scrollbar-gutter:stable}
   async function load() {
     loadError = '';
     try {
-      var base = 'issue_key,summary,customer,status,destination,po_number,po_link,item_1,qty_1,item_2,qty_2,item_3,qty_3,created_at,receipt_path,receipt_name,receipt_type,receipt_uploaded_at';
+      var base = 'issue_key,summary,customer,status,site_location,po_number,po_link,item_1,qty_1,item_2,qty_2,item_3,qty_3,created_at,receipt_path,receipt_name,receipt_type,receipt_uploaded_at';
       /* OPC Cement can be in item 1, 2 or 3 */
       var run = function (c) {
         return sb.from(TABLE).select(c).not('issue_key', 'is', null)
@@ -436,7 +436,7 @@ html{scrollbar-gutter:stable}
     return el('li', { class: 'head', 'aria-hidden': 'true' },
       el('span', { class: 'c-no', text: 'Ticket' }),
       el('span', { class: 'c-cust', text: 'Customer' }),
-      el('span', { class: 'c-dest', text: 'Destination' }),
+      el('span', { class: 'c-dest', text: 'Site Location' }),
       el('span', { class: 'c-po', text: 'PO' }),
       el('span', { class: 'c-jira', text: 'Jira status' }),
       el('span', { class: 'c-status', text: 'Deposit' }),
@@ -464,7 +464,7 @@ html{scrollbar-gutter:stable}
       el('div', { class: 'c-cust' },
         el('div', { class: 'cust', text: t.customer || '' }),
         el('div', { class: 'prod', text: t.product || '' })),
-      el('div', { class: 'c-dest' }, t.dest ? [el('span', { class: 'lbl', text: 'Destination' }), el('span', { class: 'dest', text: t.dest })] : []),
+      el('div', { class: 'c-dest' }, t.dest ? [el('span', { class: 'lbl', text: 'Site Location' }), el('span', { class: 'dest', text: t.dest })] : []),
       el('div', { class: 'c-po' }, el('span', { class: 'lbl', text: 'PO' }), t.poLink ? el('a', { class: 'num polink', href: t.poLink, target: '_blank', rel: 'noopener noreferrer', text: 'View PO ↗' }) : el('span', { class: 'num', text: '-' }), t.opc ? el('div', { class: 'ponum', text: t.opc }) : null),
       el('div', { class: 'c-jira' }, t.status ? [el('span', { class: 'lbl', text: 'Jira status' }), el('span', { class: 'jst', text: t.status })] : []),
       el('div', { class: 'c-status' },
