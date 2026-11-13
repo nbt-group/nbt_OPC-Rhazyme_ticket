@@ -90,6 +90,7 @@ TARGETS = {
             "production_etc": ("customfield_10334", "date"),
             "production_due_date": ("customfield_10339", "date"),
             "latest_comment": ("comment", "comment"),
+            "created_at": ("created", "date"),
             "updated_at": ("updated", "date"),
         },
     },
