@@ -90,8 +90,7 @@ TARGETS = {
             "production_etc": ("customfield_10334", "date"),
             "production_due_date": ("customfield_10339", "date"),
             "latest_comment": ("comment", "comment"),
-            # NOTE: for this table the updated_at column stores the Jira CREATED date (used for the 30% deposit cutoff)
-            "updated_at": ("created", "date"),
+            "created_at": ("created", "date"),
         },
     },
 }
