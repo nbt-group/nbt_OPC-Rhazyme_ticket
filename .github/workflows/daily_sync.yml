@@ -1,18 +1,23 @@
-name: Emulsion Jira Sync
+name: Jira Sync
 on:
   schedule:
     - cron: '5 16 * * *'
   workflow_dispatch:
+    inputs:
+      full_sync:
+        description: 'Full re-sync of every ticket (tick this to refill old tickets)'
+        type: boolean
+        default: false
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
       - name: Install dependencies
         run: pip install requests supabase
       - name: Run Sync
@@ -22,4 +27,5 @@ jobs:
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          FULL_SYNC: ${{ inputs.full_sync && '1' || '0' }}
         run: python scripts/jira_sync.py
