@@ -534,7 +534,7 @@ html{scrollbar-gutter:stable}
         el('span', { class: 'c-dest' }),
         el('span', { class: 'c-po' }),
         el('span', { class: 'c-jira' }),
-        el('span', { class: 'c-status', text: vc.missing + ' not received · ' + (vc.received + vc.done) + ' received' }),
+        el('span', { class: 'c-status', text: vc.missing + ' not received · ' + vc.received + ' received · ' + vc.done + ' old' }),
         el('span', { class: 'c-act' })));
       vis.forEach(function (t) { list.append(row(t)); });
     }
