@@ -266,6 +266,10 @@ html{scrollbar-gutter:stable}
   var SUPABASE_KEY = 'sb_publishable_98O37WT0nSZVw2I9128JOg___CX38Dn';
   var TABLE = 'opc_rhazyme_tickets';
   var BUCKET = 'delivery-receipts';
+  /* Tickets created BEFORE this date are old orders (no receipt needed).
+     Tickets created ON or AFTER it must have the 30% deposit receipt before delivery. Format: YYYY-MM-DD (Malaysia time). */
+  var CUTOFF_DATE = '2026-11-13';
+  var CUTOFF_MS = Date.parse(CUTOFF_DATE + 'T00:00:00+08:00');
   var AMOUNT_COL = 'budget';   // column used as the order total for the 30% deposit
   var sb = null;
 
@@ -300,10 +304,10 @@ html{scrollbar-gutter:stable}
   var noteTimer = null, loadTimer = null;
   var pendingId = null;
 
-  var FILTERS = [['all', 'All'], ['missing', 'Not received'], ['received', 'Received'], ['done', 'Done (old)']];
+  var FILTERS = [['all', 'All'], ['missing', 'Not received'], ['received', 'Received'], ['done', 'Old orders']];
 
   /* ---------- helpers ---------- */
-  function stageOf(t) { return t.receipt ? 'received' : (/^\s*done\s*$/i.test(t.status) ? 'done' : 'missing'); }
+  function stageOf(t) { return t.receipt ? 'received' : (t.created && t.created < CUTOFF_MS ? 'done' : 'missing'); }
   function rm(n) {
     return 'RM ' + Number(n || 0).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
@@ -342,8 +346,8 @@ html{scrollbar-gutter:stable}
     return {
       id: r.issue_key, no: r.issue_key, opc: r.po_number || '', status: r.status || '', poLink: /^https:\/\//i.test(r.po_link || '') ? r.po_link : '', customer: r.customer || '',
       product: items.join(' · '), summary: r.summary || '',
-      dest: cleanDest(r.destination), created: r.updated_at ? Date.parse(r.updated_at) : 0,
-      createdAt: r.updated_at ? Date.parse(r.updated_at) : 0,
+      dest: cleanDest(r.destination), created: Date.parse(r.created_at || '') || 0,
+      createdAt: Date.parse(r.created_at || '') || 0,
       receipt: r.receipt_path ? { path: r.receipt_path, name: r.receipt_name, type: r.receipt_type, at: Date.parse(r.receipt_uploaded_at) } : null
     };
   }
@@ -351,11 +355,14 @@ html{scrollbar-gutter:stable}
   async function load() {
     loadError = '';
     try {
-      var base = 'issue_key,summary,customer,status,destination,po_number,po_link,item_1,qty_1,item_2,qty_2,item_3,qty_3,updated_at,receipt_path,receipt_name,receipt_type,receipt_uploaded_at';
+      var base = 'issue_key,summary,customer,status,destination,po_number,po_link,item_1,qty_1,item_2,qty_2,item_3,qty_3,created_at,receipt_path,receipt_name,receipt_type,receipt_uploaded_at';
       /* OPC Cement can be in item 1, 2 or 3 */
-      var res = await sb.from(TABLE).select(base).not('issue_key', 'is', null)
-        .or('item_1.ilike.*OPC Cement*,item_2.ilike.*OPC Cement*,item_3.ilike.*OPC Cement*')
-        .order('updated_at', { ascending: false }).limit(1000);
+      var run = function (c) {
+        return sb.from(TABLE).select(c).not('issue_key', 'is', null)
+          .or('item_1.ilike.*OPC Cement*,item_2.ilike.*OPC Cement*,item_3.ilike.*OPC Cement*')
+          .order('created_at', { ascending: false }).limit(1000);
+      };
+      var res = await run(base);
       if (res.error) throw res.error;
       tickets = (res.data || []).map(function (r) { return mapRow(r); });
       mode = 'db';
@@ -418,7 +425,7 @@ html{scrollbar-gutter:stable}
 
   /* ---------- render ---------- */
   function pill(st) {
-    if (st === 'done') return el('span', { class: 'pill old', text: '✓ Done' });
+    if (st === 'done') return el('span', { class: 'pill old', text: '✓ Old order' });
     return el('span', { class: 'pill ' + (st === 'received' ? 'go' : 'stop'), text: st === 'received' ? '✓ Received' : '✕ Not received' });
   }
 
@@ -448,7 +455,7 @@ html{scrollbar-gutter:stable}
     return el('li', { class: 'row ' + (st === 'received' ? 'go' : 'stop') },
       el('div', { class: 'c-no' },
         el('div', { class: 'no', text: t.no || t.id }),
-        t.created ? el('div', { class: 'created', title: 'Last updated', text: dmy(t.created) }) : null,
+        t.created ? el('div', { class: 'created', title: 'Created date', text: dmy(t.created) }) : null,
         t.sample ? el('span', { class: 'tag-sample', text: 'Sample' }) : null),
       el('div', { class: 'c-cust' },
         el('div', { class: 'cust', text: t.customer || '' }),
@@ -457,7 +464,7 @@ html{scrollbar-gutter:stable}
       el('div', { class: 'c-po' }, el('span', { class: 'lbl', text: 'PO' }), t.poLink ? el('a', { class: 'num polink', href: t.poLink, target: '_blank', rel: 'noopener noreferrer', text: 'View PO ↗' }) : el('span', { class: 'num', text: '-' }), t.opc ? el('div', { class: 'ponum', text: t.opc }) : null),
       el('div', { class: 'c-status' },
         pill(st),
-        el('div', { class: 'sub' + (st === 'missing' ? ' stop' : ''), text: st === 'received' ? 'OK to deliver · ' + fmt(r.at) : st === 'done' ? 'Old order' : 'Do not deliver' })),
+        el('div', { class: 'sub' + (st === 'missing' ? ' stop' : ''), text: st === 'received' ? 'OK to deliver · ' + fmt(r.at) : st === 'done' ? 'No deposit needed' : 'Do not deliver' })),
       el('div', { class: 'c-act' }, acts));
   }
 
@@ -483,7 +490,7 @@ html{scrollbar-gutter:stable}
     };
     var stats = $('#stats');
     stats.replaceChildren();
-    [['all', 'Total tickets', ''], ['missing', 'Not received', ' s-stop'], ['received', 'Received', ' s-go'], ['done', 'Done (old)', ' s-done']].forEach(function (x) {
+    [['all', 'Total tickets', ''], ['missing', 'Not received', ' s-stop'], ['received', 'Received', ' s-go'], ['done', 'Old orders', ' s-done']].forEach(function (x) {
       var ic = el('div', { class: 'ic' }); ic.innerHTML = ICON[x[0]];
       stats.append(el('div', { class: 'stat' + x[2] }, ic, el('div', {}, el('b', { text: String(counts[x[0]]) }), el('span', { text: x[1] }))));
     });
